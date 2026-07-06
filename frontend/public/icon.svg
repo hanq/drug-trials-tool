@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0c4a6e"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="pinGrad" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="85%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+
+  <!-- Subtle decorative rings -->
+  <circle cx="256" cy="192" r="108" fill="none" stroke="#38bdf8" stroke-width="1.5" opacity="0.12"/>
+  <circle cx="256" cy="192" r="122" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.08"/>
+
+  <!-- Pin shadow -->
+  <path d="M262 415 Q334 285 334 200 A78 78 0 1 0 178 200 Q178 285 262 415 Z"
+        fill="#0f172a" opacity="0.10" transform="translate(6, 6)"/>
+
+  <!-- Map pin body -->
+  <path d="M256 410 Q328 280 328 195 A72 72 0 1 0 184 195 Q184 280 256 410 Z"
+        fill="url(#pinGrad)"/>
+
+  <!-- Inner pin stroke -->
+  <path d="M256 396 Q318 276 318 195 A62 62 0 1 0 194 195 Q194 276 256 396 Z"
+        fill="none" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <!-- Center dot (pin head highlight) -->
+  <circle cx="256" cy="195" r="4" fill="#e2e8f0" opacity="0.5"/>
+
+  <!-- Medical cross - vertical bar -->
+  <rect x="247" y="169" width="18" height="52" rx="5" fill="#0c4a6e"/>
+  <!-- Medical cross - horizontal bar -->
+  <rect x="230" y="186" width="52" height="18" rx="5" fill="#0c4a6e"/>
+
+  <!-- Cross highlight/shine -->
+  <rect x="249" y="171" width="4" height="48" rx="2" fill="#0369a1" opacity="0.25"/>
+  <rect x="232" y="188" width="46" height="4" rx="2" fill="#0369a1" opacity="0.18"/>
+</svg>

@@ -1,0 +1,40 @@
+# Build output
+docs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Go binaries
+*.exe
+.gocache/
+
+# Data artifacts (copied to frontend/public/data/ by export script)
+frontend/public/data/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/vite.config.ts.timestamp-*
+
+# Downloaded / temp
+downloads/
+pancreas_docs/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.swo
+*.swp
+
+# Old deploy folder (replaced by GitHub Actions)
+.deploy-dist/
+
+# Old crawl data (DB, HTML pages, SQLite)
+data/
