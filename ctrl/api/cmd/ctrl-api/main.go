@@ -9,9 +9,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+
+	"drug_trials_tool/claw/executor"
 
 	"drug_trials_tool/pkg/store"
 )
+
+var cfgDBPath string
 
 func main() {
 	var (
@@ -20,6 +25,7 @@ func main() {
 	)
 	flag.IntVar(&port, "port", 8081, "HTTP server port")
 	flag.StringVar(&dbPath, "db", "../data/trials.db", "SQLite database path")
+	cfgDBPath = dbPath
 	flag.Parse()
 
 	st, err := store.New(dbPath)
@@ -64,7 +70,9 @@ func main() {
 }
 
 type adminServer struct {
-	store *store.Store
+	store    *store.Store
+	crawling bool
+	mu       sync.Mutex
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -204,24 +212,55 @@ func (s *adminServer) handleDiseaseZoneDelete(w http.ResponseWriter, r *http.Req
 func (s *adminServer) handleCrawlStart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" { jsonErr(w, 405, "method not allowed"); return }
 	var body struct {
-		Keyword string `json:"keyword"`
-		Pages   int    `json:"pages"`
-		ZoneID  int    `json:"zone_id"`
+		Keyword    string `json:"keyword"`
+		Pages      int    `json:"pages"`
+		ZoneID     int    `json:"zone_id"`
+		CookieFile string `json:"cookies"`
+		DataDir    string `json:"data_dir"`
 	}
 	json.NewDecoder(r.Body).Decode(&body)
 	if body.Keyword == "" { jsonErr(w, 400, "missing keyword"); return }
 	if body.Pages < 1 { body.Pages = 1 }
+	if body.DataDir == "" { body.DataDir = "../data" }
 
-	log.Printf("Crawl triggered: keyword=%s pages=%d zone=%d", body.Keyword, body.Pages, body.ZoneID)
+	s.mu.Lock()
+	if s.crawling {
+		s.mu.Unlock()
+		jsonErr(w, 409, "crawl already in progress")
+		return
+	}
+	s.crawling = true
+	s.mu.Unlock()
+
+	go func() {
+		log.Printf("Crawl started: keyword=%s pages=%d zone=%d", body.Keyword, body.Pages, body.ZoneID)
+		executor.Execute(executor.Config{
+			Keyword:    body.Keyword,
+			Pages:      body.Pages,
+			ZoneID:     body.ZoneID,
+			CookieFile: body.CookieFile,
+			DataDir:    body.DataDir,
+			DBPath:     cfgDBPath,
+			Store:      s.store,
+		})
+		log.Printf("Crawl finished: keyword=%s", body.Keyword)
+		s.mu.Lock()
+		s.crawling = false
+		s.mu.Unlock()
+	}()
+
 	jsonOK(w, map[string]interface{}{
-		"message": "crawl queued (run claw CLI separately)",
+		"message": "crawl started",
 		"keyword": body.Keyword,
 		"pages":   body.Pages,
 	})
 }
 
 func (s *adminServer) handleCrawlStatus(w http.ResponseWriter, r *http.Request) {
-	jsonOK(w, map[string]interface{}{"crawling": false, "message": "use POST /api/ctrl/crawl/start to trigger"})
+	s.mu.Lock()
+	c := s.crawling
+	s.mu.Unlock()
+	jsonOK(w, map[string]interface{}{"crawling": c})
 }
 
 func (s *adminServer) handleCrawlLogs(w http.ResponseWriter, r *http.Request) {
