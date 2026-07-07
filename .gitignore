@@ -10,7 +10,13 @@ __pycache__/
 *.exe
 .gocache/
 
-# Data artifacts (copied to frontend/public/data/ by export script)
+# 0.2: new project node_modules + build
+ctrl/web/node_modules/
+ctrl/web/dist/
+spa/web/node_modules/
+spa/web/dist/
+
+# Data artifacts
 frontend/public/data/
 
 # Node
@@ -33,8 +39,8 @@ Desktop.ini
 *.swo
 *.swp
 
-# Old deploy folder (replaced by GitHub Actions)
+# Deploy
 .deploy-dist/
 
-# Old crawl data (DB, HTML pages, SQLite)
+# Data
 data/
