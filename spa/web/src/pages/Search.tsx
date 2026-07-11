@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Trial, search } from "../api";
+import { useZone } from "../ZoneContext";
 import { FlaskConical, ChevronRight } from "lucide-react";
 
 export default function Search() {
   const [params] = useSearchParams();
   const nav = useNavigate();
   const q = params.get("q") || "";
+  const zoneIdParam = params.get("zone_id");
+  const zoneId = zoneIdParam ? parseInt(zoneIdParam, 10) : undefined;
+  const { zones } = useZone();
+  const zoneName = zoneId ? zones.find((z) => z.id === zoneId)?.name : "";
   const [trials, setTrials] = useState<Trial[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -14,13 +19,15 @@ export default function Search() {
   useEffect(() => {
     if (!q) return;
     setLoading(true);
-    search(q).then((r) => { setTrials(r.trials); setTotal(r.total); setLoading(false); });
-  }, [q]);
+    search(q, 1, zoneId).then((r) => { setTrials(r.trials); setTotal(r.total); setLoading(false); });
+  }, [q, zoneId]);
+
+  const titleSuffix = zoneName ? ` (${zoneName})` : "";
 
   return (
     <div>
       <div className="page-header">
-        <h2>搜索: "{q}" <span className="badge">{total} 条结果</span></h2>
+        <h2>搜索: "{q}"{titleSuffix} <span className="badge">{total} 条结果</span></h2>
       </div>
       {loading && <div className="spinner" />}
       {trials.map((t) => (

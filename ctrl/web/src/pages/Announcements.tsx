@@ -14,10 +14,11 @@ export default function Announcements() {
   const handleSave = async () => {
     if (!title || !content) return;
     try {
+      const admin = JSON.parse(localStorage.getItem("ctrl_admin") || "{}");
       if (editing) {
         await updateAnnouncement(editing.id, title, content);
       } else {
-        await createAnnouncement(title, content);
+        await createAnnouncement(title, content, admin.id);
       }
       setTitle(""); setContent(""); setEditing(null);
       load();
@@ -39,7 +40,9 @@ export default function Announcements() {
 
       <div className="card">
         <h3 style={{ marginBottom: "0.8rem" }}>{editing ? "编辑公告" : "发布公告"}</h3>
+        <label>标题</label>
         <input placeholder="标题" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <label>内容</label>
         <textarea placeholder="内容" rows={4} value={content} onChange={(e) => setContent(e.target.value)} />
         <div className="actions">
           <button className="btn-primary" onClick={handleSave}>{editing ? "保存" : "发布"}</button>

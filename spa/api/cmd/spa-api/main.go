@@ -91,27 +91,30 @@ func (s *server) health(w http.ResponseWriter, r *http.Request) {
 // Provinces
 func (s *server) handleProvinces(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" { jsonErr(w, 405, "method not allowed"); return }
-	provinces, err := s.store.ListProvinces()
+	zoneID, _ := strconv.Atoi(r.URL.Query().Get("zone_id"))
+	provinces, err := s.store.ListProvinces(zoneID)
 	if err != nil { jsonErr(w, 500, err.Error()); return }
 	jsonOK(w, provinces)
 }
 
 func (s *server) handleProvinceInst(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" { jsonErr(w, 405, "method not allowed"); return }
-	id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/spa/provinces/"))
-	if err != nil { jsonErr(w, 400, "invalid province id"); return }
-	insts, err := s.store.ListInstitutionsByProvince(id)
-	if err != nil { jsonErr(w, 500, err.Error()); return }
-	jsonOK(w, insts)
+		id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/spa/provinces/"))
+		if err != nil { jsonErr(w, 400, "invalid province id"); return }
+		zoneID, _ := strconv.Atoi(r.URL.Query().Get("zone_id"))
+		insts, err := s.store.ListInstitutionsByProvince(id, zoneID)
+		if err != nil { jsonErr(w, 500, err.Error()); return }
+		jsonOK(w, insts)
 }
 
 func (s *server) handleInstitutionInvest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" { jsonErr(w, 405, "method not allowed"); return }
-	id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/spa/institutions/"))
-	if err != nil { jsonErr(w, 400, "invalid institution id"); return }
-	invs, err := s.store.ListInvestigatorsByInstitution(id)
-	if err != nil { jsonErr(w, 500, err.Error()); return }
-	jsonOK(w, invs)
+		id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/spa/institutions/"))
+		if err != nil { jsonErr(w, 400, "invalid institution id"); return }
+		zoneID, _ := strconv.Atoi(r.URL.Query().Get("zone_id"))
+		invs, err := s.store.ListInvestigatorsByInstitution(id, zoneID)
+		if err != nil { jsonErr(w, 500, err.Error()); return }
+		jsonOK(w, invs)
 }
 
 func (s *server) handleInvestigatorTrials(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +122,8 @@ func (s *server) handleInvestigatorTrials(w http.ResponseWriter, r *http.Request
 	name := r.URL.Query().Get("name")
 	instID, _ := strconv.Atoi(r.URL.Query().Get("institution_id"))
 	if name == "" || instID == 0 { jsonErr(w, 400, "need name and institution_id"); return }
-	trials, err := s.store.ListTrialsByInvestigator(name, instID)
+	zoneID, _ := strconv.Atoi(r.URL.Query().Get("zone_id"))
+	trials, err := s.store.ListTrialsByInvestigator(name, instID, zoneID)
 	if err != nil { jsonErr(w, 500, err.Error()); return }
 	jsonOK(w, trials)
 }
@@ -147,6 +151,7 @@ func (s *server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Investigator: q.Get("investigator"),
 		RegNo:        q.Get("reg_no"),
 		Applicant:    q.Get("applicant"),
+		ZoneID:       zoneIDFromQuery(r),
 		Page:         page,
 		PageSize:     pageSize,
 	}
@@ -183,4 +188,9 @@ func (s *server) handleAnnouncements(w http.ResponseWriter, r *http.Request) {
 	anns, err := s.store.ListAnnouncements(true)
 	if err != nil { jsonErr(w, 500, err.Error()); return }
 	jsonOK(w, anns)
+}
+// zoneIDFromQuery extracts zone_id query param, returns 0 if absent/invalid
+func zoneIDFromQuery(r *http.Request) int {
+	zid, _ := strconv.Atoi(r.URL.Query().Get("zone_id"))
+	return zid
 }

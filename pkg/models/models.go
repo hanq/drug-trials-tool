@@ -94,6 +94,7 @@ type AdminUser struct {
     ID           int       `json:"id"`
     Username     string    `json:"username"`
     PasswordHash string    `json:"-"`
+    DisplayName  string    `json:"display_name"`
     CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -104,6 +105,7 @@ type SearchQuery struct {
     Investigator string `json:"investigator"`
     RegNo        string `json:"reg_no"`
     Applicant    string `json:"applicant"`
+    ZoneID       int    `json:"zone_id"`
     Page         int    `json:"page"`
     PageSize     int    `json:"page_size"`
 }

@@ -41,6 +41,8 @@ func main() {
 
 	// Auth
 	mux.HandleFunc("/api/ctrl/login", srv.handleLogin)
+	mux.HandleFunc("/api/ctrl/change-password", srv.handleChangePassword)
+	mux.HandleFunc("/api/ctrl/update-display-name", srv.handleUpdateDisplayName)
 
 	// Dashboard
 	mux.HandleFunc("/api/ctrl/dashboard", srv.handleDashboard)
@@ -123,6 +125,47 @@ func (s *adminServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]interface{}{"id": admin.ID, "username": admin.Username})
 }
 
+// Auth - change password
+func (s *adminServer) handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" { jsonErr(w, 405, "method not allowed"); return }
+	var body struct {
+		AdminID     int    `json:"admin_id"`
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonErr(w, 400, "invalid json"); return
+	}
+	admin, err := s.store.GetAdminByID(body.AdminID)
+	if err != nil { jsonErr(w, 401, "admin not found"); return }
+	h := sha256.Sum256([]byte(body.OldPassword))
+	hash := fmt.Sprintf("%x", h)
+	if admin.PasswordHash != hash { jsonErr(w, 403, "旧密码错误"); return }
+	nh := sha256.Sum256([]byte(body.NewPassword))
+	newHash := fmt.Sprintf("%x", nh)
+	if err := s.store.UpdateAdminPassword(body.AdminID, newHash); err != nil {
+		jsonErr(w, 500, err.Error()); return
+	}
+	jsonOK(w, map[string]string{"status": "ok"})
+}
+
+// Auth - update display name
+func (s *adminServer) handleUpdateDisplayName(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" { jsonErr(w, 405, "method not allowed"); return }
+	var body struct {
+		AdminID     int    `json:"admin_id"`
+		DisplayName string `json:"display_name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonErr(w, 400, "invalid json"); return
+	}
+	if body.DisplayName == "" { jsonErr(w, 400, "display name required"); return }
+	if err := s.store.UpdateAdminDisplayName(body.AdminID, body.DisplayName); err != nil {
+		jsonErr(w, 500, err.Error()); return
+	}
+	jsonOK(w, map[string]string{"status": "ok"})
+}
+
 // Dashboard
 
 func (s *adminServer) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +181,8 @@ func (s *adminServer) handleTrials(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		zoneID, _ := strconv.Atoi(r.URL.Query().Get("zone_id"))
 		keyword := r.URL.Query().Get("keyword")
-		trials, err := s.store.ListUnpublishedTrials(zoneID, keyword)
+		published, _ := strconv.Atoi(r.URL.Query().Get("published"))
+		trials, err := s.store.ListTrials(zoneID, keyword, published)
 		if err != nil { jsonErr(w, 500, err.Error()); return }
 		jsonOK(w, trials)
 		return
@@ -282,11 +326,13 @@ func (s *adminServer) handleAnnouncements(w http.ResponseWriter, r *http.Request
 		var body struct {
 			Title   string `json:"title"`
 			Content string `json:"content"`
+			AdminID int    `json:"admin_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			jsonErr(w, 400, "invalid json"); return
 		}
-		ann, err := s.store.CreateAnnouncement(body.Title, body.Content, 1)
+		if body.AdminID == 0 { body.AdminID = 1 }
+		ann, err := s.store.CreateAnnouncement(body.Title, body.Content, body.AdminID)
 		if err != nil { jsonErr(w, 500, err.Error()); return }
 		jsonOK(w, ann)
 	default:

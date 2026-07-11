@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Investigator, Institution, getInvestigators, getInstitutions } from "../api";
+import { useZone } from "../ZoneContext";
 import { User, ArrowLeft, Building2 } from "lucide-react";
 
 export default function InstitutionPage() {
@@ -9,13 +10,14 @@ export default function InstitutionPage() {
   const nav = useNavigate();
   const iid = parseInt(id || "0");
   const pid = parseInt(params.get("pid") || "0");
+  const { selectedZone } = useZone();
   const [invs, setInvs] = useState<Investigator[]>([]);
   const [inst, setInst] = useState<Institution | null>(null);
 
   useEffect(() => {
-    getInvestigators(iid).then(setInvs);
-    if (pid) getInstitutions(pid).then((is) => setInst(is.find((i) => i.id === iid) || null));
-  }, [iid, pid]);
+    getInvestigators(iid, selectedZone?.id).then(setInvs);
+    if (pid) getInstitutions(pid, selectedZone?.id).then((is) => setInst(is.find((i) => i.id === iid) || null));
+  }, [iid, pid, selectedZone?.id]);
 
   return (
     <div>

@@ -11,9 +11,9 @@ export default function ProvincePage() {
   const [province, setProv] = useState<Province | null>(null);
 
   useEffect(() => {
-    getInstitutions(pid).then(setInsts);
-    getProvinces().then((ps) => setProv(ps.find((p) => p.id === pid) || null));
-  }, [pid]);
+    getInstitutions(pid, selectedZone?.id).then(setInsts);
+    getProvinces(selectedZone?.id).then((ps) => setProv(ps.find((p) => p.id === pid) || null));
+  }, [pid, selectedZone?.id]);
 
   return (
     <div>
@@ -36,3 +36,5 @@ export default function ProvincePage() {
     </div>
   );
 }
+import { useZone } from "../ZoneContext";
+  const { selectedZone } = useZone();

@@ -30,10 +30,11 @@ export interface CrawlLog { id: number; keyword: string; pages: number; found: n
 
 export function login(username: string, password: string) { return request("/login", { method: "POST", body: { username, password } }); }
 export function getDashboard() { return request("/dashboard") as Promise<DashboardStats>; }
-export function getTrials(zoneId?: number, keyword?: string) {
+export function getTrials(zoneId?: number, keyword?: string, published?: number) {
   const p = new URLSearchParams();
   if (zoneId) p.set("zone_id", String(zoneId));
   if (keyword) p.set("keyword", keyword);
+  if (published !== undefined) p.set("published", String(published));
   return request("/trials?" + p.toString()) as Promise<Trial[]>;
 }
 export function publishTrial(detailId: string) { return request("/trials/" + detailId + "/publish", { method: "POST" }); }
@@ -45,6 +46,13 @@ export function crawlStart(keyword: string, pages: number, zoneId: number) { ret
 export function crawlStatus() { return request("/crawl/status") as Promise<{crawling: boolean}>; }
 export function getCrawlLogs() { return request("/crawl/logs") as Promise<CrawlLog[]>; }
 export function getAnnouncements() { return request("/announcements") as Promise<Announcement[]>; }
-export function createAnnouncement(title: string, content: string) { return request("/announcements", { method: "POST", body: { title, content } }); }
+export function createAnnouncement(title: string, content: string, adminId: number = 1) { return request("/announcements", { method: "POST", body: { title, content, admin_id: adminId } }); }
 export function updateAnnouncement(id: number, title: string, content: string) { return request("/announcements/" + id, { method: "PUT", body: { title, content } }); }
 export function deleteAnnouncement(id: number) { return request("/announcements/" + id, { method: "DELETE" }); }
+
+export function changePassword(adminId: number, oldPassword: string, newPassword: string) {
+  return request("/change-password", { method: "POST", body: { admin_id: adminId, old_password: oldPassword, new_password: newPassword } });
+}
+export function updateDisplayName(adminId: number, displayName: string) {
+  return request("/update-display-name", { method: "POST", body: { admin_id: adminId, display_name: displayName } });
+}

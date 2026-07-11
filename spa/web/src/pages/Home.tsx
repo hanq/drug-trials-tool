@@ -3,15 +3,18 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Province, getProvinces } from "../api";
 import ChinaMap from "../components/ChinaMap";
 import { MapPin, List, Building2 } from "lucide-react";
+import { useZone } from "../ZoneContext";
 
 export default function Home() {
+  const [params] = useSearchParams();
+  const { selectedZone } = useZone();
+  const zoneId = selectedZone?.id;
   const [provinces, setProv] = useState<Province[]>([]);
   const [view, setView] = useState<"map" | "list">("list");
-  const [params] = useSearchParams();
   const nav = useNavigate();
   const q = params.get("q") || "";
 
-  useEffect(() => { getProvinces().then(setProv); }, []);
+  useEffect(() => { getProvinces(zoneId).then(setProv); }, [zoneId]);
 
   const filtered = q
     ? provinces.filter((p) => p.name.includes(q) || p.name.includes(q.replace(/[省市]/g, "")))

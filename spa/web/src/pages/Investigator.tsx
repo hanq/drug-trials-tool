@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Trial, getTrials } from "../api";
+import { useZone } from "../ZoneContext";
 import { FlaskConical, ArrowLeft, ChevronRight } from "lucide-react";
 
 export default function InvestigatorPage() {
@@ -8,9 +9,10 @@ export default function InvestigatorPage() {
   const nav = useNavigate();
   const name = params.get("name") || "";
   const iid = parseInt(params.get("iid") || "0");
+  const { selectedZone } = useZone();
   const [trials, setTrials] = useState<Trial[]>([]);
 
-  useEffect(() => { if (name && iid) getTrials(name, iid).then(setTrials); }, [name, iid]);
+  useEffect(() => { if (name && iid) getTrials(name, iid, selectedZone?.id).then(setTrials); }, [name, iid, selectedZone?.id]);
 
   return (
     <div>

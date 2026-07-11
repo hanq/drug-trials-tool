@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    display_name TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -95,6 +96,10 @@ CREATE TABLE IF NOT EXISTS crawl_logs (
 `
 
 func MigrateDB(db *sql.DB) error {
-    _, err := db.Exec(Schema)
-    return err
+    if _, err := db.Exec(Schema); err != nil {
+        return err
+    }
+    // Migration: add display_name if missing
+    db.Exec("ALTER TABLE admin_users ADD COLUMN display_name TEXT DEFAULT ''")
+    return nil
 }

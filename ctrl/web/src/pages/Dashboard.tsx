@@ -33,7 +33,7 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-      {stats.recent_crawls.length > 0 && (
+      {stats.recent_crawls && stats.recent_crawls.length > 0 && (
         <div className="card">
           <h3 style={{ marginBottom: "0.8rem" }}>最近爬虫记录</h3>
           <table>

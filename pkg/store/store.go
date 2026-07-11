@@ -42,15 +42,17 @@ func (s *Store) EnsureProvince(name string) (int, error) {
 	return id, err
 }
 
-func (s *Store) ListProvinces() ([]models.Province, error) {
+func (s *Store) ListProvinces(zoneID int) ([]models.Province, error) {
+	zoneWhere := ""
+	if zoneID > 0 { zoneWhere = fmt.Sprintf(" AND disease_zone_id=%d", zoneID) }
 	rows, err := s.DB.Query("SELECT p.id,p.name,COALESCE(p.code,'')," +
 		"(SELECT COUNT(DISTINCT ti.trial_id) FROM trial_institutions ti " +
 		"JOIN institutions i ON i.id=ti.institution_id " +
-		"WHERE i.province_id=p.id AND ti.trial_id IN (SELECT detail_id FROM trials WHERE published=1)) " +
+		"WHERE i.province_id=p.id AND ti.trial_id IN (SELECT detail_id FROM trials WHERE published=1" + zoneWhere + ")) " +
 		"FROM provinces p ORDER BY p.name")
 	if err != nil { return nil, err }
 	defer rows.Close()
-	var r []models.Province
+	r := make([]models.Province, 0)
 	for rows.Next() {
 		var p models.Province
 		if er := rows.Scan(&p.ID, &p.Name, &p.Code, &p.TrialCount); er != nil { return nil, er }
@@ -78,14 +80,16 @@ func (s *Store) EnsureInstitution(name, city string, provinceID int) (int, error
 	return id, err
 }
 
-func (s *Store) ListInstitutionsByProvince(provinceID int) ([]models.Institution, error) {
+func (s *Store) ListInstitutionsByProvince(provinceID, zoneID int) ([]models.Institution, error) {
+	instZoneWhere := ""
+	if zoneID > 0 { instZoneWhere = fmt.Sprintf(" AND disease_zone_id=%d", zoneID) }
 	rows, err := s.DB.Query("SELECT i.id,i.name,i.province_id,COALESCE(p.name,''),i.city,"+
 		"(SELECT COUNT(*) FROM trial_institutions ti WHERE ti.institution_id=i.id "+
-		"AND ti.trial_id IN (SELECT detail_id FROM trials WHERE published=1)) "+
+		"AND ti.trial_id IN (SELECT detail_id FROM trials WHERE published=1" + instZoneWhere + ")) "+
 		"FROM institutions i LEFT JOIN provinces p ON p.id=i.province_id WHERE i.province_id=? ORDER BY i.name", provinceID)
 	if err != nil { return nil, err }
 	defer rows.Close()
-	var r []models.Institution
+	r := make([]models.Institution, 0)
 	for rows.Next() {
 		var inst models.Institution
 		if er := rows.Scan(&inst.ID, &inst.Name, &inst.ProvinceID, &inst.ProvinceName, &inst.City, &inst.TrialCount); er != nil { return nil, er }
@@ -113,17 +117,19 @@ func (s *Store) EnsureInvestigator(name string, instID int, degree, title, phone
 	return int(nid), nil
 }
 
-func (s *Store) ListInvestigatorsByInstitution(instID int) ([]models.Investigator, error) {
+func (s *Store) ListInvestigatorsByInstitution(instID, zoneID int) ([]models.Investigator, error) {
+	instZoneWhere := ""
+	if zoneID > 0 { instZoneWhere = fmt.Sprintf(" AND disease_zone_id=%d", zoneID) }
 	rows, err := s.DB.Query("SELECT inv.id,inv.name,COALESCE(inv.degree,''),COALESCE(inv.title,''),"+
 		"COALESCE(inv.phone,''),COALESCE(inv.email,''),COALESCE(inv.address,''),"+
 		"COALESCE(inv.zip_code,''),inv.institution_id,COALESCE(i.name,''),"+
 		"(SELECT COUNT(*) FROM trial_institutions ti WHERE ti.investigator_name=inv.name "+
 		"AND ti.institution_id=inv.institution_id "+
-		"AND ti.trial_id IN (SELECT detail_id FROM trials WHERE published=1)) "+
+		"AND ti.trial_id IN (SELECT detail_id FROM trials WHERE published=1" + instZoneWhere + ")) "+
 		"FROM investigators inv JOIN institutions i ON i.id=inv.institution_id WHERE inv.institution_id=? ORDER BY inv.name", instID)
 	if err != nil { return nil, err }
 	defer rows.Close()
-	var r []models.Investigator
+	r := make([]models.Investigator, 0)
 	for rows.Next() {
 		var inv models.Investigator
 		if er := rows.Scan(&inv.ID, &inv.Name, &inv.Degree, &inv.Title, &inv.Phone, &inv.Email, &inv.Address, &inv.ZipCode, &inv.InstitutionID, &inv.InstitutionName, &inv.TrialCount); er != nil { return nil, er }
@@ -180,7 +186,7 @@ func (s *Store) GetTrial(detailID string) (*models.Trial, error) {
 }
 
 
-func (s *Store) ListTrialsByInvestigator(name string, instID int) ([]models.Trial, error) {
+func (s *Store) ListTrialsByInvestigator(name string, instID, zoneID int) ([]models.Trial, error) {
 	rows, err := s.DB.Query("SELECT t.detail_id,t.reg_no,t.title,t.drug_name,t.indication,t.status,"+
 		"COALESCE(t.applicant_name,''),COALESCE(t.keyword,''),COALESCE(t.detail_json,''),"+
 		"t.crawl_time,COALESCE(t.data_hash,''),t.published,"+
@@ -193,7 +199,7 @@ func (s *Store) ListTrialsByInvestigator(name string, instID int) ([]models.Tria
 }
 
 func scanTrials(rows *sql.Rows) ([]models.Trial, error) {
-	var r []models.Trial
+	r := make([]models.Trial, 0)
 	for rows.Next() {
 		var t models.Trial
 		var ds string
@@ -212,6 +218,7 @@ func (s *Store) SearchTrials(q models.SearchQuery) (*models.SearchResult, error)
 	if q.PageSize <= 0 { q.PageSize = 20 }
 	if q.Page <= 0 { q.Page = 1 }
 	where := "WHERE t.published=1"
+	if q.ZoneID > 0 { where += fmt.Sprintf(" AND t.disease_zone_id=%d", q.ZoneID) }
 	var args []interface{}
 	if q.Keyword != "" {
 		where += " AND (t.title LIKE ? OR t.drug_name LIKE ? OR t.indication LIKE ? OR t.reg_no LIKE ?)"
@@ -257,7 +264,7 @@ func (s *Store) ListDiseaseZones() ([]models.DiseaseZone, error) {
 	rows, err := s.DB.Query("SELECT id,name,keyword,COALESCE(description,''),created_at FROM disease_zones ORDER BY name")
 	if err != nil { return nil, err }
 	defer rows.Close()
-	var r []models.DiseaseZone
+	r := make([]models.DiseaseZone, 0)
 	for rows.Next() {
 		var z models.DiseaseZone
 		if er := rows.Scan(&z.ID, &z.Name, &z.Keyword, &z.Description, &z.CreatedAt); er != nil { return nil, er }
@@ -298,7 +305,7 @@ func (s *Store) ListAnnouncements(publishedOnly bool) ([]models.Announcement, er
 	rows, err := s.DB.Query(q)
 	if err != nil { return nil, err }
 	defer rows.Close()
-	var r []models.Announcement
+	r := make([]models.Announcement, 0)
 	for rows.Next() {
 		var a models.Announcement
 		if er := rows.Scan(&a.ID, &a.Title, &a.Content, &a.IsPinned, &a.Published, &a.CreatedAt, &a.UpdatedAt, &a.CreatedBy); er != nil { return nil, er }
@@ -334,9 +341,26 @@ func (s *Store) CreateAdmin(username, passwordHash string) error {
 }
 
 func (s *Store) GetAdminByUsername(username string) (*models.AdminUser, error) {
-	row := s.DB.QueryRow("SELECT id,username,password_hash,created_at FROM admin_users WHERE username=?", username)
+	return s.getAdminRow(s.DB.QueryRow("SELECT id,username,password_hash,COALESCE(display_name,''),created_at FROM admin_users WHERE username=?", username))
+}
+
+func (s *Store) GetAdminByID(id int) (*models.AdminUser, error) {
+	return s.getAdminRow(s.DB.QueryRow("SELECT id,username,password_hash,COALESCE(display_name,''),created_at FROM admin_users WHERE id=?", id))
+}
+
+func (s *Store) UpdateAdminPassword(id int, newHash string) error {
+	_, err := s.DB.Exec("UPDATE admin_users SET password_hash=? WHERE id=?", newHash, id)
+	return err
+}
+
+func (s *Store) UpdateAdminDisplayName(id int, displayName string) error {
+	_, err := s.DB.Exec("UPDATE admin_users SET display_name=? WHERE id=?", displayName, id)
+	return err
+}
+
+func (s *Store) getAdminRow(row *sql.Row) (*models.AdminUser, error) {
 	var u models.AdminUser
-	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.DisplayName, &u.CreatedAt)
 	if err != nil { return nil, err }
 	return &u, nil
 }
@@ -366,11 +390,19 @@ func (s *Store) BatchPublish(zoneID int, keyword string) (int, error) {
 	return int(n), nil
 }
 
-func (s *Store) ListUnpublishedTrials(zoneID int, keyword string) ([]models.Trial, error) {
-	where := "WHERE t.published=0"
+func (s *Store) ListTrials(zoneID int, keyword string, published int) ([]models.Trial, error) {
+	where := ""
 	var args []interface{}
-	if zoneID > 0 { where += " AND t.disease_zone_id=?"; args = append(args, zoneID) }
-	if keyword != "" { where += " AND t.keyword=?"; args = append(args, keyword) }
+	if published == 0 { where = "WHERE t.published=0" }
+	if published == 1 { where = "WHERE t.published=1" }
+	if zoneID > 0 {
+		if where == "" { where = "WHERE" } else { where += " AND" }
+		where += " t.disease_zone_id=?"; args = append(args, zoneID)
+	}
+	if keyword != "" {
+		if where == "" { where = "WHERE" } else { where += " AND" }
+		where += " t.keyword=?"; args = append(args, keyword)
+	}
 	rows, err := s.DB.Query("SELECT t.detail_id,t.reg_no,t.title,t.drug_name,t.indication,t.status,"+
 		"COALESCE(t.applicant_name,''),COALESCE(t.keyword,''),COALESCE(t.detail_json,''),"+
 		"t.crawl_time,COALESCE(t.data_hash,''),t.published,"+
@@ -403,10 +435,13 @@ func (s *Store) ListCrawlLogs(limit int) ([]models.CrawlLog, error) {
 		"start_time,COALESCE(end_time,start_time),status FROM crawl_logs ORDER BY id DESC LIMIT ?", limit)
 	if err != nil { return nil, err }
 	defer rows.Close()
-	var r []models.CrawlLog
+	r := make([]models.CrawlLog, 0)
 	for rows.Next() {
 		var l models.CrawlLog
-		if er := rows.Scan(&l.ID, &l.Keyword, &l.Pages, &l.DiseaseZoneID, &l.Found, &l.NewItems, &l.StartTime, &l.EndTime, &l.Status); er != nil { return nil, er }
+		var st, et string
+		if er := rows.Scan(&l.ID, &l.Keyword, &l.Pages, &l.DiseaseZoneID, &l.Found, &l.NewItems, &st, &et, &l.Status); er != nil { return nil, er }
+		l.StartTime, _ = time.Parse("2006-01-02 15:04:05", st)
+		l.EndTime, _ = time.Parse("2006-01-02 15:04:05", et)
 		r = append(r, l)
 	}
 	return r, nil

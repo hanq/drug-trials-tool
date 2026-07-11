@@ -67,13 +67,26 @@ cd claw && go run . -keyword "胰腺" -pages 3
 - ctrl/web: :5173
 - spa/web:  :5174
 
+## 数据库
+- `data/db/trials.db` — SQLite 数据库，已完成 0.2 架构迁移
+- 197 条旧试验数据均标记 `published=0`（后台可见），已归入"胰腺癌"病种分区（`disease_zone_id=1`）
+- 默认管理员：admin / admin123（SHA256 密码验证）
+- 病种分区需在 ctrl 后台创建
+
+## 病种分区切换（v0.2 新增）
+- spa 前端 Header 新增病种分区下拉框，默认"全部病种"
+- 选区后，首页省份、机构、研究者、搜索均按分区过滤试验数
+- 后端 API 端点支持 `zone_id` 查询参数（provinces、institutions、investigators、search）
+- 研究者试验列表（investigators endpoint）已接入 zone 过滤
+
 ## 关键数据流
-1. ctrl 管理员创建病种分区 → 触发爬虫 → claw 爬取数据（published=0）
-2. ctrl 管理员审核 → 公开数据（published=1）
-3. spa 访问已公开数据（所有查询自带 WHERE published=1）
+ 1. ctrl 管理员创建病种分区 → 触发爬虫 → claw 爬取数据（published=0）
+ 2. ctrl 管理员审核 → 公开数据（published=1）
+ 3. spa 访问已公开数据（所有查询自带 WHERE published=1）
+    可选 zone_id 参数进一步限定病种范围
 
 ## 数据库核心表
-- `trials`（含 published, disease_zone_id）
+ - `trials`（含 published, disease_zone_id）
 - `disease_zones`（病种分区）
 - `announcements`（公告）
 - `admin_users`（管理员）
@@ -93,3 +106,5 @@ GOCACHE=".gocache" go build ./ctrl/api/...
 GOCACHE=".gocache" go build ./spa/api/...
 GOCACHE=".gocache" go build ./pkg/...
 ```
+前端：`cd spa/web && npm install && npm run build`
+Go vet 通过：`go vet ./pkg/... && go vet ./spa/api/...`

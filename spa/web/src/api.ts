@@ -21,12 +21,29 @@ export interface DiseaseZone { id: number; name: string; keyword: string; descri
 export interface Announcement { id: number; title: string; content: string; is_pinned: number; created_at: string }
 export interface SearchResult { trials: Trial[]; total: number; page: number; page_size: number }
 
-export function getProvinces() { return req("/provinces") as Promise<Province[]> }
-export function getInstitutions(pid: number) { return req("/provinces/" + pid) as Promise<Institution[]> }
-export function getInvestigators(iid: number) { return req("/institutions/" + iid) as Promise<Investigator[]> }
-export function getTrials(name: string, iid: number) { return req("/investigators?" + new URLSearchParams({ name, institution_id: String(iid) })) as Promise<Trial[]> }
+export function getProvinces(zoneId?: number) {
+  const params = zoneId ? "?zone_id=" + zoneId : "";
+  return req("/provinces" + params) as Promise<Province[]>
+}
+export function getInstitutions(pid: number, zoneId?: number) {
+  const params = zoneId ? "?zone_id=" + zoneId : "";
+  return req("/provinces/" + pid + params) as Promise<Institution[]>
+}
+export function getInvestigators(iid: number, zoneId?: number) {
+  const params = zoneId ? "?zone_id=" + zoneId : "";
+  return req("/institutions/" + iid + params) as Promise<Investigator[]>
+}
+export function getTrials(name: string, iid: number, zoneId?: number) {
+  const params: Record<string, string> = { name, institution_id: String(iid) };
+  if (zoneId) params.zone_id = String(zoneId);
+  return req("/investigators?" + new URLSearchParams(params)) as Promise<Trial[]>
+}
 export function getTrial(id: string) { return req("/trials/" + id) as Promise<Trial> }
-export function search(q: string, page?: number) { return req("/search?" + new URLSearchParams({ q, page_size: "20", page: String(page || 1) })) as Promise<SearchResult> }
+export function search(q: string, page?: number, zoneId?: number) {
+  const params: Record<string, string> = { q, page_size: "20", page: String(page || 1) };
+  if (zoneId) params.zone_id = String(zoneId);
+  return req("/search?" + new URLSearchParams(params)) as Promise<SearchResult>
+}
 export function getDiseaseZones() { return req("/disease-zones") as Promise<DiseaseZone[]> }
 export function getZoneTrials(zid: number) { return req("/disease-zones/" + zid) as Promise<Trial[]> }
 export function getAnnouncements() { return req("/announcements") as Promise<Announcement[]> }
